@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Grammar Tic-Tac-Toe</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================
+       CSS VARIABLES & RESET
+       ========================================= */
+    :root {
+      --primary: #ff6b9d;
+      --secondary: #7b68ee;
+      --gold: #ffd93d;
+      --success: #00d9a5;
+      --error: #ff6b6b;
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --text-main: #ffffff;
+      --text-muted: rgba(255, 255, 255, 0.7);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-main);
+      background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a1a2e);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    h1, h2, h3 { font-family: 'Fredoka', sans-serif; }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* =========================================
+       BACKGROUND EFFECTS (STARS)
+       ========================================= */
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--duration) ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    .shooting-star {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1), 0 0 0 8px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 255, 255, 1);
+      animation: shoot 4s linear infinite;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .shooting-star::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 150px;
+      height: 1px;
+      background: linear-gradient(90deg, #fff, transparent);
+      right: 0;
+    }
+    @keyframes shoot {
+      0% { transform: rotate(315deg) translateX(0); opacity: 1; }
+      70% { opacity: 1; }
+      100% { transform: rotate(315deg) translateX(-800px); opacity: 0; }
+    }
+
+    /* =========================================
+       GLASSMORPHISM & UTILITIES
+       ========================================= */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .hidden { display: none !important; }
+    
+    .btn {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 10px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 107, 157, 0.4); }
+    .btn:active { transform: translateY(0); }
+    .btn-secondary { background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); }
+
+    /* =========================================
+       OVERLAYS & MODALS
+       ========================================= */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 12, 41, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-content {
+      padding: 30px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-10px); }
+      80% { transform: translateX(10px); }
+    }
+    .shake { animation: shake 0.4s ease-in-out; }
+
+    /* =========================================
+       FORM ELEMENTS
+       ========================================= */
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.2);
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+    select option { background: #302b63; color: white; }
+
+    .radio-group { display: flex; gap: 15px; justify-content: center; margin: 15px 0; }
+    .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+    /* =========================================
+       GAME BOARD
+       ========================================= */
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
+      padding: 20px;
+      z-index: 10;
+    }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 20px;
+      padding: 15px;
+      text-align: center;
+    }
+    .score-item h3 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
+    .score-item p { font-size: 1.5rem; font-weight: 600; color: var(--gold); }
+
+    .turn-indicator {
+      margin-bottom: 15px;
+      padding: 10px 20px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 80vmin;
+      height: 80vmin;
+      max-width: 520px;
+      max-height: 520px;
+      margin-bottom: 20px;
+    }
+
+    .cell {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2rem, 8vmin, 4rem);
+      font-family: 'Fredoka', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: white;
+    }
+    .cell:hover { background: rgba(255, 255, 255, 0.15); transform: scale(1.02); }
+    .cell.x { color: var(--primary); text-shadow: 0 0 10px rgba(255, 107, 157, 0.5); }
+    .cell.o { color: var(--secondary); text-shadow: 0 0 10px rgba(123, 104, 238, 0.5); }
+    .cell.taken { cursor: not-allowed; }
+
+    .controls { display: flex; gap: 10px; }
+
+    /* =========================================
+       QUIZ MODAL SPECIFICS
+       ========================================= */
+    .quiz-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .quiz-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+    }
+    .quiz-btn:hover { background: rgba(123, 104, 238, 0.3); border-color: var(--secondary); }
+    .quiz-btn.correct { background: rgba(0, 217, 165, 0.3); border-color: var(--success); }
+    .quiz-btn.wrong { background: rgba(255, 107, 107, 0.3); border-color: var(--error); }
+
+    .feedback-text {
+      margin-top: 15px;
+      font-weight: 600;
+      min-height: 24px;
+    }
+    .feedback-text.error { color: var(--error); }
+    .feedback-text.success { color: var(--success); }
+
+    /* =========================================
+       CANVAS CONFETTI
+       ========================================= */
+    #confetti-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    /* =========================================
+       RESPONSIVE ADJUSTMENTS
+       ========================================= */
+    @media (max-width: 480px) {
+      .board { width: 90vmin; height: 90vmin; }
+      .modal-content { padding: 20px; }
+      h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Elements -->
+  <div id="stars-container"></div>
+  <div class="shooting-star" style="top: 10%; left: 80%; animation-delay: 0s;"></div>
+  <div class="shooting-star" style="top: 30%; left: 90%; animation-delay: 2.5s;"></div>
+  <div class="shooting-star" style="top: 60%; left: 70%; animation-delay: 5s;"></div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- 1. START SCREEN -->
+  <div id="start-screen" class="overlay">
+    <div class="glass modal-content">
+      <h1>✨ Grammar Tic-Tac-Toe</h1>
+      <p style="margin: 15px 0; color: var(--text-muted);">Master past tenses while conquering the board!</p>
+      <input type="text" id="student-name-input" placeholder="Enter your name" maxlength="30">
+      <button class="btn" onclick="goToSettings()">Continue to Settings</button>
+    </div>
+  </div>
+
+  <!-- 2. SETTINGS DIALOG -->
+  <div id="settings-screen" class="overlay hidden">
+    <div class="glass modal-content">
+      <h2>⚙️ Game Settings</h2>
+      
+      <div style="margin-top: 20px; text-align: left;">
+        <label>Game Mode:</label>
+        <div class="radio-group">
+          <label><input type="radio" name="mode" value="PvE" checked onchange="toggleAISettings()"> vs Computer</label>
+          <label><input type="radio" name="mode" value="PvP" onchange="toggleAISettings()"> 2 Players</label>
+        </div>
+
+        <div id="ai-settings">
+          <label>AI Difficulty:</label>
+          <select id="ai-difficulty">
+            <option value="Perfect">Perfect (Minimax)</option>
+            <option value="Pragmatic">Pragmatic (Occasional mistakes)</option>
+            <option value="Reckless">Reckless (Random moves)</option>
+          </select>
+        </div>
+
+        <label style="margin-top: 15px; display: block;">First Move:</label>
+        <div class="radio-group">
+          <label><input type="radio" name="firstMove" value="X" checked> Player X</label>
+          <label><input type="radio" name="firstMove" value="O"> Player O</label>
+        </div>
+
+        <label style="margin-top: 15px; display: block;">Glyph Style:</label>
+        <select id="glyph-style">
+          <option value="Standard">Standard (X / O)</option>
+          <option value="Magic">Magic (⭐ / 🌙)</option>
+          <option value="Knight">Knight (♞ / ♜)</option>
+        </select>
+      </div>
+
+      <button class="btn" style="width: 100%; margin-top: 25px;" onclick="startGame()">Start Game</button>
+    </div>
+  </div>
+
+  <!-- 3. TAB WARNING OVERLAY -->
+  <div id="tab-warning" class="overlay hidden">
+    <div class="glass modal-content">
+      <h2 style="color: var(--error);">⚠️ Attention!</h2>
+      <p style="margin: 15px 0;">You have switched away from the game. This has been recorded.</p>
+      <button class="btn" onclick="closeTabWarning()">I understand</button>
+    </div>
+  </div>
+
+  <!-- 4. QUIZ MODAL -->
+  <div id="quiz-modal" class="overlay hidden">
+    <div class="glass modal-content" id="quiz-modal-content">
+      <h3 style="color: var(--gold); margin-bottom: 10px;">📝 Grammar Check!</h3>
+      <p id="quiz-question" style="font-size: 1.1rem; margin-bottom: 20px; line-height: 1.4;"></p>
+      <div id="quiz-options" class="quiz-options"></div>
+      <div id="quiz-feedback" class="feedback-text"></div>
+    </div>
+  </div>
+
+  <!-- 5. END SCREEN -->
+  <div id="end-screen" class="overlay hidden">
+    <div class="glass modal-content">
+      <h1 id="end-title">Game Over!</h1>
+      <p id="end-message" style="margin: 15px 0; font-size: 1.2rem;"></p>
+      <div class="controls" style="justify-content: center; margin-top: 20px;">
+        <button class="btn" onclick="resetGame()">Play Again</button>
+        <button class="btn btn-secondary" onclick="showSettingsFromEnd()">Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MAIN GAME CONTAINER -->
+  <div id="game-container">
+    <div class="glass scoreboard">
+      <div class="score-item">
+        <h3>Player X</h3>
+        <p id="score-x">0</p>
+      </div>
+      <div class="score-item">
+        <h3>Draws</h3>
+        <p id="score-draw">0</p>
+      </div>
+      <div class="score-item">
+        <h3>Player O</h3>
+        <p id="score-o">0</p>
+      </div>
+    </div>
+
+    <div class="glass turn-indicator" id="turn-indicator">Player X's Turn</div>
+
+    <div class="board" id="board">
+      <!-- Cells generated by JS -->
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" onclick="resetGame()">Reset Board</button>
+      <button class="btn btn-secondary" onclick="showSettings()">Settings</button>
+    </div>
+  </div>
+
+  <script>
+    /* ====================================================================
+       DATA TRACKING AND API INTEGRATION
+       ==================================================================== */
+    // Power Automate URL (Provided)
+    const POWER_AUTOMATE_URL = 'https://default50bef10a64ce4efab7ceef7facd9c8.97.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/06/workflows/db051d19d6ad49db826ea17f31de68aa/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=IhZ_zFXl2whxWZMOaBP47dSJrL6xkew72NkSvNCTcO0';
+    
+    // ====================================================================
+    // TEACHER: Replace the URL below with your actual Google Apps Script URL
+    // ====================================================================
+    const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_SHEETS_URL_HERE';
+
+    /* ====================================================================
+       QUIZ DATA FORMAT (EASY FOR TEACHERS TO EDIT)
+       ==================================================================== */
+    const rawQuizData = [
+      "Yesterday I ___ to the park with my friends.,go,went,gone,2",
+      "While I ___ my homework, my mom called me.,did,was doing,had done,2",
+      "When we arrived at the cinema, the film had already . ,start,started,starting,2",
+      "She ___ a beautiful song at the party last night.,sang,was singing,had sung,1",
+      "At 8 PM yesterday, I ___ dinner with my family.,had,was having,had had,2",
+      "They ___ to London before they moved to Paris.,went,had gone,was going,2",
+      "What ___ you doing when I called you?,did,were,had,2",
+      "He ___ his keys, so he couldn't enter the house.,lost,was losing,had lost,3",
+      "We ___ a great time at the beach last summer.,had,was having,had had,1",
+      "While they ___ football, it started to rain.,played,were playing,had played,2",
+      "I had never ___ such a funny movie before.,see,saw,seen,3",
+      "My sister ___ her birthday party when I came home.,had,was having,had had,2",
+      "After she ___ her homework, she went out to play.,finished,was finishing,had finished,3",
+      " you visit your grandparents last weekend?,Did,Were,Had,1",
+      "The sun ___ when we left the house.,shone,was shining,had shone,2",
+      "He ___ in this city for five years before he moved.,lived,was living,had lived,3",
+      "What ___ you doing at 7 o'clock yesterday evening?,did,were,had,2",
+      "They ___ the museum before it closed.,visited,were visiting,had visited,3",
+      "I ___ my phone while I was walking to school.,dropped,was dropping,had dropped,1",
+      "She ___ English for two years before she came to Moscow.,studied,was studying,had studied,3"
+    ];
+
+    const quizData = rawQuizData.map(q => {
+      const parts = q.split(',');
+      const correctIndex = parseInt(parts.pop()) - 1;
+      const opt3 = parts.pop(); const opt2 = parts.pop(); const opt1 = parts.pop();
+      return { question: parts.join(','), options: [opt1, opt2, opt3], correct: correctIndex };
+    });
+
+    /* ====================================================================
+       GAME STATE
+       ==================================================================== */
+    const state = {
+      studentName: '',
+      gameMode: 'PvE',
+      aiDifficulty: 'Perfect',
+      firstMove: 'X',
+      glyphs: 'Standard',
+      board: Array(9).fill(null),
+      currentPlayer: 'X',
+      gameActive: false,
+      scores: { X: 0, O: 0, draw: 0 },
+      roundStats: { total: 0, correct: 0 },
+      wrongAnswers: [],
+      tabSwitchCount: 0,
+      gameStartTime: null,
+      pendingCell: null,
+      quizAttempts: 0,
+      currentQuestion: null
+    };
+
+    /* ====================================================================
+       INITIALIZATION & UI HELPERS
+       ==================================================================== */
+    function init() {
+      generateStars();
+      createBoard();
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      updateConfetti();
+    }
+
+    function generateStars() {
+      const container = document.getElementById('stars-container');
+      for (let i = 0; i < 120; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 3 + 1;
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+        star.style.animationDelay = Math.random() * 5 + 's';
+        container.appendChild(star);
+      }
+    }
+
+    function createBoard() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.index = i;
+        cell.addEventListener('click', () => handleCellClick(i));
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function getGlyph(player) {
+      if (state.glyphs === 'Standard') return player;
+      if (state.glyphs === 'Magic') return player === 'X' ? '⭐' : '🌙';
+      if (state.glyphs === 'Knight') return player === 'X' ? '♞' : '♜';
+      return player;
+    }
+
+    /* ====================================================================
+       NAVIGATION & SETTINGS
+       ==================================================================== */
+    function goToSettings() {
+      const nameInput = document.getElementById('student-name-input').value.trim();
+      if (!nameInput) {
+        alert('Please enter your name to start.');
+        return;
+      }
+      state.studentName = nameInput;
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('settings-screen').classList.remove('hidden');
+    }
+
+    function toggleAISettings() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById('ai-settings').style.display = mode === 'PvE' ? 'block' : 'none';
+    }
+
+    function showSettings() {
+      state.gameActive = false;
+      document.getElementById('settings-screen').classList.remove('hidden');
+    }
+
+    function showSettingsFromEnd() {
+      document.getElementById('end-screen').classList.add('hidden');
+      document.getElementById('settings-screen').classList.remove('hidden');
+    }
+
+    function startGame() {
+      state.gameMode = document.querySelector('input[name="mode"]:checked').value;
+      state.aiDifficulty = document.getElementById('ai-difficulty').value;
+      state.firstMove = document.querySelector('input[name="firstMove"]:checked').value;
+      state.glyphs = document.getElementById('glyph-style').value;
+      
+      state.scores = { X: 0, O: 0, draw: 0 };
+      state.roundStats = { total: 0, correct: 0 };
+      state.wrongAnswers = [];
+      state.tabSwitchCount = 0;
+      
+      updateScoreboard();
+      document.getElementById('settings-screen').classList.add('hidden');
+      resetGame();
+    }
+
+    function resetGame() {
+      state.board = Array(9).fill(null);
+      state.currentPlayer = state.firstMove;
+      state.gameActive = true;
+      state.gameStartTime = Date.now();
+      document.getElementById('end-screen').classList.add('hidden');
+      
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.className = 'cell';
+      });
+      
+      updateTurnIndicator();
+      
+      if (state.gameMode === 'PvE' && state.currentPlayer === 'O') {
+        setTimeout(aiMove, 800);
+      }
+    }
+
+    /* ====================================================================
+       GAME LOGIC
+       ==================================================================== */
+    function handleCellClick(index) {
+      if (!state.gameActive || state.board[index] !== null) return;
+      if (state.gameMode === 'PvE' && state.currentPlayer === 'O') return; // AI's turn
+
+      state.pendingCell = index;
+      openQuizModal();
+    }
+
+    function openQuizModal() {
+      state.quizAttempts = 0;
+      state.currentQuestion = quizData[Math.floor(Math.random() * quizData.length)];
+      
+      document.getElementById('quiz-question').textContent = state.currentQuestion.question;
+      document.getElementById('quiz-feedback').textContent = '';
+      document.getElementById('quiz-feedback').className = 'feedback-text';
+      document.getElementById('quiz-modal-content').classList.remove('shake');
+      
+      const optionsContainer = document.getElementById('quiz-options');
+      optionsContainer.innerHTML = '';
+      
+      state.currentQuestion.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-btn';
+        btn.textContent = `${String.fromCharCode(65 + idx)}. ${opt}`;
+        btn.onclick = () => handleQuizAnswer(idx, btn);
+        optionsContainer.appendChild(btn);
+      });
+      
+      document.getElementById('quiz-modal').classList.remove('hidden');
+    }
+
+    function handleQuizAnswer(chosenIndex, btnElement) {
+      const q = state.currentQuestion;
+      const feedback = document.getElementById('quiz-feedback');
+      
+      if (chosenIndex === q.correct) {
+        // Correct!
+        state.roundStats.correct++;
+        state.roundStats.total++;
+        feedback.textContent = 'Correct! Making your move...';
+        feedback.className = 'feedback-text success';
+        btnElement.classList.add('correct');
+        
+        setTimeout(() => {
+          document.getElementById('quiz-modal').classList.add('hidden');
+          makeMove(state.pendingCell, state.currentPlayer);
+          fireConfetti(window.innerWidth / 2, window.innerHeight / 2, true); // Mini confetti
+        }, 800);
+      } else {
+        // Wrong!
+        state.quizAttempts++;
+        state.roundStats.total++;
+        btnElement.classList.add('wrong');
+        btnElement.disabled = true;
+        
+        if (state.quizAttempts < 3) {
+          feedback.textContent = 'Incorrect! Try again.';
+          feedback.className = 'feedback-text error';
+          const modalContent = document.getElementById('quiz-modal-content');
+          modalContent.classList.remove('shake');
+          void modalContent.offsetWidth; // Trigger reflow
+          modalContent.classList.add('shake');
+        } else {
+          // Max attempts reached
+          state.wrongAnswers.push({
+            question: q.question,
+            chosen: q.options[chosenIndex],
+            correct: q.options[q.correct]
+          });
+          feedback.textContent = `Time's up! The correct answer was: "${q.options[q.correct]}"`;
+          feedback.className = 'feedback-text error';
+          
+          setTimeout(() => {
+            document.getElementById('quiz-modal').classList.add('hidden');
+            switchTurn(); // Forfeit move
+          }, 2500);
+        }
+      }
+    }
+
+    function makeMove(index, player) {
+      state.board[index] = player;
+      const cell = document.querySelector(`.cell[data-index="${index}"]`);
+      cell.textContent = getGlyph(player);
+      cell.classList.add('taken', player.toLowerCase());
+      
+      const winner = checkWinner(state.board);
+      if (winner) {
+        endGame(winner);
+      } else {
+        switchTurn();
+      }
+    }
+
+    function switchTurn() {
+      state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
+      updateTurnIndicator();
+      
+      if (state.gameMode === 'PvE' && state.currentPlayer === 'O' && state.gameActive) {
+        setTimeout(aiMove, 800);
+      }
+    }
+
+    function updateTurnIndicator() {
+      const indicator = document.getElementById('turn-indicator');
+      indicator.textContent = `Player ${getGlyph(state.currentPlayer)}'s Turn`;
+      indicator.style.color = state.currentPlayer === 'X' ? 'var(--primary)' : 'var(--secondary)';
+    }
+
+    function checkWinner(board) {
+      const lines = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+      for (let [a, b, c] of lines) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return board[a];
+        }
+      }
+      if (board.every(cell => cell !== null)) return 'draw';
+      return null;
+    }
+
+    /* ====================================================================
+       AI LOGIC (MINIMAX)
+       ==================================================================== */
+    function aiMove() {
+      if (!state.gameActive) return;
+      const move = getBestMove();
+      makeMove(move, 'O');
+    }
+
+    function getBestMove() {
+      const available = state.board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+      
+      if (state.aiDifficulty === 'Reckless') {
+        return available[Math.floor(Math.random() * available.length)];
+      }
+      if (state.aiDifficulty === 'Pragmatic' && Math.random() < 0.3) {
+        return available[Math.floor(Math.random() * available.length)];
+      }
+      
+      // Perfect (Minimax)
+      let bestScore = -Infinity;
+      let move = available[0];
+      for (let i of available) {
+        state.board[i] = 'O';
+        let score = minimax(state.board, 0, false);
+        state.board[i] = null;
+        if (score > bestScore) {
+          bestScore = score;
+          move = i;
+        }
+      }
+      return move;
+    }
+
+    function minimax(board, depth, isMaximizing) {
+      const result = checkWinner(board);
+      if (result === 'O') return 10 - depth;
+      if (result === 'X') return depth - 10;
+      if (result === 'draw') return 0;
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'O';
+            let score = minimax(board, depth + 1, false);
+            board[i] = null;
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'X';
+            let score = minimax(board, depth + 1, true);
+            board[i] = null;
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+        return bestScore;
+      }
+    }
+
+    /* ====================================================================
+       END GAME & API SUBMISSION
+       ==================================================================== */
+    function endGame(winner) {
+      state.gameActive = false;
+      if (winner === 'draw') {
+        state.scores.draw++;
+        showEndScreen("It's a Draw!");
+      } else {
+        state.scores[winner]++;
+        showEndScreen(`Player ${getGlyph(winner)} Wins!`);
+        fireConfetti(window.innerWidth / 2, window.innerHeight / 2, false); // Full confetti
+      }
+      updateScoreboard();
+      sendResults();
+    }
+
+    function showEndScreen(message) {
+      document.getElementById('end-title').textContent = message;
+      document.getElementById('end-message').textContent = `Great job, ${state.studentName}! Your results have been saved.`;
+      document.getElementById('end-screen').classList.remove('hidden');
+    }
+
+    function updateScoreboard() {
+      document.getElementById('score-x').textContent = state.scores.X;
+      document.getElementById('score-o').textContent = state.scores.O;
+      document.getElementById('score-draw').textContent = state.scores.draw;
+    }
+
+    async function sendResults() {
+      const payload = {
+        student_name: state.studentName || 'Anonymous',
+        exercise_name: "Grammar Tic Tac Toe",
+        score: state.scores.X + ' : ' + state.scores.O + ' (Draws: ' + state.scores.draw + ')',
+        percentage: state.roundStats.total > 0 ? Math.round((state.roundStats.correct / state.roundStats.total) * 100) + '%' : '0%',
+        time: new Date().toLocaleString(),
+        time_spent: Math.round((Date.now() - state.gameStartTime) / 1000) + ' sec',
+        tab_switches: state.tabSwitchCount + ' switches',
+        errors_text: state.wrongAnswers.length > 0 ? state.wrongAnswers.map((w, i) => (i+1) + '. Q: "' + w.question + '" | Chosen: "' + w.chosen + '" | Correct: "' + w.correct + '"').join(' || ') : 'No errors!'
+      };
+
+      // Send to Power Automate (Teams)
+      try {
+        await fetch(POWER_AUTOMATE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error("Power Automate submission failed:", e);
+      }
+
+      // Send to Google Sheets
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error("Google Sheets submission failed:", e);
+      }
+    }
+
+    /* ====================================================================
+       TAB TRACKING
+       ==================================================================== */
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && state.gameActive) {
+        state.tabSwitchCount++;
+        document.getElementById('tab-warning').classList.remove('hidden');
+      }
+    });
+
+    function closeTabWarning() {
+      document.getElementById('tab-warning').classList.add('hidden');
+    }
+
+    /* ====================================================================
+       CONFETTI SYSTEM (CANVAS)
+       ==================================================================== */
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function fireConfetti(x, y, isMini = false) {
+      const count = isMini ? 30 : 150;
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x || canvas.width / 2,
+          y: y || canvas.height / 2,
+          vx: (Math.random() - 0.5) * (isMini ? 10 : 20),
+          vy: (Math.random() - 0.5) * (isMini ? 10 : 20) - (isMini ? 0 : 5),
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+          size: Math.random() * 5 + 2,
+          life: 100,
+          decay: isMini ? 2 : 1
+        });
+      }
+    }
+
+    function updateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles = particles.filter(p => p.life > 0);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.2; // gravity
+        p.life -= p.decay;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life / 100);
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(updateConfetti);
+    }
+
+    // Start everything
+    init();
+  </script>
+</body>
+</html>
